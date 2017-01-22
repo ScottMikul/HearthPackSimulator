@@ -1,0 +1,12 @@
+todo/critical functionality:
+1) use a bootstrap grid system for the card rarity chance percentages
+2) style the custom pack selection to look better
+3) make the card images appear on mouse hover over card
+
+future bigger tasks:
+1) additional card filters
+* filter by mana/health/attack
+* filter by card features (taunt, stealth etc)
+2) allow a mode to generate packs till you own every card
+* count the number of packs
+* count how much money it would cost to buy this amount of packs

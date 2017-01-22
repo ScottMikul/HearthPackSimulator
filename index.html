@@ -1,0 +1,293 @@
+<html ng-app="PackSim">
+  <head>
+    <title>PackSim</title>
+
+    <!-- Bootstrap core CSS -->
+    <link href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css" rel="stylesheet">
+	<style>
+	input[type=number]::-webkit-inner-spin-button,
+	input[type=number]::-webkit-outer-spin-button { 
+		-webkit-appearance: none; 
+		margin: 0; 
+	}	
+	</style>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/angular.js/1.5.8/angular.js"></script>
+	<script src="https://cdnjs.cloudflare.com/ajax/libs/angular.js/1.5.8/angular-animate.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/angular.js/1.5.8/angular-sanitize.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/angular-ui-bootstrap/2.3.1/ui-bootstrap-tpls.min.js"></script>
+	<script>
+	var HearthTees = angular.module('PackSim',['ngAnimate', 'ngSanitize', 'ui.bootstrap']);
+		HearthTees.controller('Controller',['$scope','$http', function($scope,$http){
+			//set defaults
+			$scope.mode= 'wild';
+			$scope.allorcoll= 'coll';
+			
+			//set current standart sets
+			$scope.standard=['Basic', 'Classic', 'Blackrock Mountain','The Grand Tournament','The League of Explorers','Whispers of the Old Gods','Karazhan','Mean Streets of Gadgetzan'];
+			$scope.packsets = ['Classic','Goblins vs Gnomes','The Grand Tournament','Whispers of the Old Gods','Mean Streets of Gadgetzan'];
+			$scope.selectedsets=[];
+			
+			
+			//get current card sets
+			$scope.cardsetnames= [];
+			$scope.cards = "";
+			
+			// array of rarity objects
+			$scope.rarityindexes = [];
+			$scope.cardrarities = [];
+			$scope.collection =[];
+			$http.get('/cardlist').then(function(result){
+				$scope.cards= result.data;
+	
+				var counter = 0;
+				for(var name in $scope.cards){
+					console.log(name);
+					$scope.cardsetnames.push(name);
+					
+					//count rarities.
+					if($scope.packsets.indexOf(name)!==-1){
+						var packset = $scope.cards[name];
+						$scope.cardrarities.push({common:[],rare:[],epic:[], legendary:[]});
+						console.dir($scope.cardrarities);
+						for(var cardindex in packset){
+							if(packset[cardindex].rarity ==="Common"){
+								 $scope.cardrarities[counter].common.push(cardindex);
+							}
+							else if(packset[cardindex].rarity ==="Rare"){
+								$scope.cardrarities[counter].rare.push(cardindex);
+							}
+							else if(packset[cardindex].rarity ==="Epic"){
+								$scope.cardrarities[counter].epic.push(cardindex);
+							}
+							else {
+								$scope.cardrarities[counter].legendary.push(cardindex);
+							}
+						}
+						counter++;
+
+					}
+				}
+				console.dir($scope.cardrarities);
+				
+			});
+			
+			$scope.updateselectedlist = function( value, index){
+				var indexOfValue = $scope.selectedsets.indexOf(value);
+				if(indexOfValue=== -1){
+					$scope.selectedsets.push($scope.cardsetnames[index]);
+				}
+				if(indexOfValue!== -1){
+					$scope.selectedsets.splice(indexOfValue,1);
+				}
+				for(a in $scope.selectedsets){
+					console.log($scope.selectedsets[a]);
+				}
+			}
+			
+			$scope.hearthsim2015 = [70.36, 21.60,4.08, .94, 1.48, 1.27, .19 , .07];
+			
+			$scope.chances = $scope.hearthsim2015.slice();
+			
+
+			
+			$scope.cardsetrarities = {};
+
+			
+			// make sure that the card chances add to 100%
+			$scope.addsto100 = 0;
+			$scope.checkif100 = function(){ 
+				for(a in $scope.chances){					
+					$scope.addsto100 += $scope.chances[a];
+				}
+			}
+			$scope.checkif100();
+			
+			
+			$scope.generatepack = function(qty,packname)
+			{
+				
+				console.log("qty: " + qty);
+				console.log("packsetindex: "+ packsetindex);
+				var packsetindex = $scope.packsets.indexOf(packname);
+				//packs
+				for(var i = 0;i < qty;i++){
+					//each pack has 5 cards
+					for(var b =0;b< 5;b++)
+					{
+						//determine rarity of card.
+						var rng = Math.random()*$scope.addsto100;
+						//console.log("RNG: "+ rng);
+						
+						var cur = 0;
+						var res = 0;
+						for(var c = 0;c < $scope.chances.length;c++){
+							if(cur + $scope.chances[c] < rng){
+								//console.log("addrng: "+cur+"  "+ $scope.chances[c]);
+								cur+= $scope.chances[c];
+							}
+							else{
+								res = c;
+								//console.log("C: "+c);
+								break;
+							}
+						}
+						
+						//determine which card of that rarity is generated
+						//var cardrng = Math.floor(Math.random()*$scope.cards[packname].length);
+						
+						//get index for the rarity.
+						var resolveC;
+						var golden;
+						if(c==0||c==4){
+							resolveC='common';
+							if(c==3){
+							golden=true;}
+						}
+						else if(c==1||c==5){
+							resolveC='rare';
+							if(c==5){
+							golden=true;}
+						}
+						
+						else if(c==2||c==6){
+							resolveC='epic';
+							if(c==6){
+							golden=true;}
+						}
+						
+						else if(c==3||c==7){
+							resolveC='legendary';
+							if(c==7){
+							golden=true;}
+						}
+						
+						//console.log('resolveC: '+resolveC);
+						//console.log('packname: ' +packsetindex);
+						//console.log('cardrarities: ' + $scope.cardrarities[0].common);	
+						var randomindex = Math.floor(Math.random()*$scope.cardrarities[packsetindex][resolveC].length);
+						var resultcard = $scope.cards[packname][$scope.cardrarities[packsetindex][resolveC][randomindex]];
+						if(!resultcard.hasOwnProperty('qty')){
+							resultcard.qty = 1;
+						}
+						
+						var foundcard = false;
+						for(cur in $scope.collection){
+							if(resultcard.name == $scope.collection[cur].name){
+								resultcard.qty +=1;
+								foundcard = true;
+								console.log('found card: '+ foundcard);
+								break;
+							}
+						}
+						if(!foundcard){
+							$scope.collection.push(resultcard);	
+						}
+						
+					}
+				}
+			}
+
+		}]);
+	</script>
+  </head>
+
+  <body>
+	<div class="container">
+
+      <!-- Static navbar -->
+      <nav class="navbar navbar-default">
+        <div class="container-fluid">
+          <div class="navbar-header" >
+            <div class="navbar-left" ><img src="hsicon.jpg" width="25%" ></div>
+          </div>
+        </div><!--/.container-fluid -->
+      </nav>
+	  
+	  
+
+	  
+		
+
+		
+		<div ng-controller="Controller"> <!-- controller -->
+				<!-- mode selector -->
+			<div class="col-md-4 btn-group" style="padding: 5px">
+				<label class="btn btn-primary" ng-model="allorcoll" uib-btn-radio="'all'">All</label>
+				<label class="btn btn-primary" ng-model="allorcoll" uib-btn-radio="'coll'">Collection</label>
+			</div>
+			<div class="col-md-4 col-md-offset-9 btn-group " style="padding:5px">
+				<label class="btn btn-primary" ng-model="mode" uib-btn-radio="'wild'">wild</label>
+				<label class="btn btn-primary" ng-model="mode" uib-btn-radio="'standard'">standard</label>
+				<label class="btn btn-primary" ng-model="mode" uib-btn-radio="'custom'">custom</label>
+			</div>
+
+
+
+		
+		<div ng-if="mode=='custom'">
+			<fieldset>
+				<div ng-repeat="set in cardsetnames">
+					<input type="checkbox" ng-click="updateselectedlist(set, $index)" >{{set}}</input>
+				</div>
+			</fieldset>
+		</div>
+		<br />
+		<div ng-if="allorcoll==='coll'">
+			<button  style="padding: 5px" class="btn btn-primary" ng-click="chances = hearthsim2015.slice()" >Hearthsim2015 Study</button>
+		</div>
+		<table ng-if="allorcoll==='coll'">
+			<th>Card Chances </th><th>Common</th><th>Rare</th><th>Epic</th><th>Legendary</th>
+			<tr ><td>Regular</td>
+				<td><input type="number" ng-model="chances[0]" ng-change="checkif100()"></input></td>
+				<td><input type="number" ng-model="chances[1]" ng-change="checkif100()"></input></td >
+				<td><input type="number" ng-model="chances[2]" ng-change="checkif100()"></input></td>
+				<td><input type="number" ng-model="chances[3]" ng-change="checkif100()"></input></td>
+			</tr>
+			<tr><td>Golden</td>					
+				<td><input type="number" ng-model="chances[4]" ng-change="checkif100()"></input></td>
+				<td><input type="number" ng-model="chances[5]" ng-change="checkif100()"></input></td >
+				<td><input type="number" ng-model="chances[6]" ng-change="checkif100()"></input></td>
+				<td><input type="number" ng-model="chances[7]" ng-change="checkif100()"></input></td>
+			</tr>
+			
+		</table>
+		<div ng-if="allorcoll==='coll'">
+			<select ng-model='selectedpack' >
+				<option ng-repeat='pack in packsets' >{{pack}}</option>
+			</select>
+			<input type='number' ng-model='quantity'></input>
+			<button style="padding: 5px" class="btn btn-primary" ng-click="generatepack(quantity,selectedpack)">Generate Packs</button>
+		</div>
+
+		<br />
+		<p>Search: <input type="text" ng-model="cardfilter"></p>
+		
+			<div ng-if="allorcoll=='all'" ng-repeat="(setname, set) in cards">
+				<div ng-if="mode=='wild'">
+					<div ng-repeat="(cardkey, card) in set| filter: {name: cardfilter}">{{card.name}}</div>
+				</div>
+				<div ng-if="mode=='standard'">
+					<div ng-if="standard.indexOf(setname)!=-1" ng-repeat="(cardkey, card) in set| filter: {name: cardfilter}">{{card.name}}</div>
+				</div>
+				<div ng-if="mode =='custom'">
+					<div ng-if="selectedsets.indexOf(setname)!=-1" ng-repeat="(cardkey, card) in set| filter: {name: cardfilter}">{{card.name}}</div>
+				</div>
+			</div>
+			
+			<div ng-if="allorcoll=='coll'" ng-repeat="card in collection| filter:{name: cardfilter}" >
+				<div ng-if="mode=='wild'">
+					{{card.name}}<span> {{card.qty}}
+				</div>
+				<div ng-if="mode=='standard'&& standard.indexOf(card.cardSet)!==-1">
+					{{card.name}}<span> {{card.qty}}
+				</div>
+				<div ng-if="mode=='custom'&& selectedsets.indexOf(card.cardSet)!==-1">
+					{{card.name}}<span> {{card.qty}}
+				</div>
+			</div>
+		</div>
+		
+    </div> <!-- /container -->
+  </body>
+</html>
